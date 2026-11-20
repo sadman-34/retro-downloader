@@ -15,9 +15,20 @@
   </div>
 
   <div class="container">
-    <form id="dl-form" action="/api/extract" method="get">
-      <label for="video-url" class="lbl">Video URL:</label>
-      <input type="text" id="video-url" name="url" class="inp" value="" placeholder="https://..." />
+    <form id="dl-form" action="https://retro-downloader-api.onrender.com/api/extract" method="get">
+      <label for="site-select" class="lbl">Source / Mode:</label>
+      <select id="site-select" name="site" class="sel">
+        <option value="url">Direct Video URL</option>
+        <option value="youtube" selected="selected">Search: YouTube</option>
+        <option value="x">Search: X (Twitter)</option>
+        <option value="facebook">Search: Facebook</option>
+        <option value="pornhub">Search: Pornhub</option>
+        <option value="xnxx">Search: XNXX</option>
+        <option value="beeg">Search: Beeg</option>
+      </select>
+
+      <label for="video-url" id="input-lbl" class="lbl">Search Keywords:</label>
+      <input type="text" id="video-url" name="url" class="inp" value="" />
 
       <label for="quality" class="lbl">Format / Quality:</label>
       <select id="quality" name="quality" class="sel">
@@ -28,13 +39,18 @@
       </select>
 
       <div class="btn-row">
-        <input type="submit" id="submit-btn" class="btn" value="Get Link" />
+        <input type="submit" id="submit-btn" class="btn" value="Search" />
         <input type="button" id="clear-btn" class="btn btn-sec" value="Clear" />
       </div>
     </form>
 
     <div id="status-box" class="box hidden">
       <div id="status-text">Ready.</div>
+    </div>
+
+    <div id="search-box" class="box hidden">
+      <div class="res-title">Tap a video to get 240p link:</div>
+      <div id="search-list"></div>
     </div>
 
     <div id="result-box" class="box result-box hidden">
@@ -47,7 +63,7 @@
   <div class="footer">
     Opera Mini 4.4 Ready • <a href="#config" id="toggle-cfg">API Settings</a>
     <div id="cfg-panel" class="cfg-panel hidden">
-      <label for="api-base" class="lbl">Backend Endpoint:</label>
+      <label for="api-base" class="lbl">Backend Base URL:</label>
       <input type="text" id="api-base" class="inp" value="" />
       <input type="button" id="save-cfg" class="btn btn-sec" value="Save Endpoint" />
     </div>
