@@ -37,6 +37,10 @@
     return raw.replace(/\/api\/(extract|search)\/?$/, '').replace(/\/+$/, '');
   }
 
+  function isDirectUrl(val) {
+    return /^https?:\/\//i.test(val);
+  }
+
   var savedEndpoint = getCookie('liteget_api');
   if (savedEndpoint) {
     apiHost = normalizeHost(savedEndpoint);
@@ -45,11 +49,11 @@
 
   function updateModeUI() {
     if (siteSelect.value === 'url') {
-      inputLbl.innerHTML = 'Video URL:';
+      inputLbl.innerHTML = 'Paste Video Link:';
       submitBtn.value = 'Get Link';
       form.action = apiHost + '/api/extract';
     } else {
-      inputLbl.innerHTML = 'Search Keywords:';
+      inputLbl.innerHTML = 'Keywords or Paste Link:';
       submitBtn.value = 'Search';
       form.action = apiHost + '/api/search';
     }
@@ -209,10 +213,10 @@
     }
     var val = urlInput.value.replace(/^\s+|\s+$/g, '');
     if (!val) {
-      showStatus('Please enter a keyword or URL.', true);
+      showStatus('Please paste a link or enter keywords.', true);
       return false;
     }
-    if (siteSelect.value === 'url') {
+    if (siteSelect.value === 'url' || isDirectUrl(val)) {
       hideAllResults();
       requestVideoLink(val, qualitySelect.value);
     } else {
