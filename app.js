@@ -1,7 +1,7 @@
 /* Strictly ES5 for Opera Mini 4.4 Presto Proxy Compatibility */
 (function () {
-  // Default configurable backend API endpoint
-  var DEFAULT_API_BASE = 'https://your-backend-api.example.com/api/extract';
+  // Default backend API endpoint
+  var DEFAULT_API_BASE = 'https://retro-downloader-api.onrender.com/api/extract';
   var apiBase = DEFAULT_API_BASE;
 
   // DOM Element Lookups
