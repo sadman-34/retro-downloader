@@ -1,74 +1,43 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <meta name="HandheldFriendly" content="true" />
-  <meta name="MobileOptimized" content="240" />
-  <title>LiteGet 240p</title>
-  <link rel="stylesheet" type="text/css" href="style.css" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retro Downloader</title>
+<meta name="description" content="Lightweight video link helper for feature phones">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="header">
-    <strong>LiteGet</strong> <span class="badge">240p</span>
-  </div>
+<div id="wrap">
 
-  <div class="container">
-    <form id="dl-form" action="https://retro-downloader-api.onrender.com/api/extract" method="get">
-      <label for="site-select" class="lbl">Source / Mode:</label>
-      <select id="site-select" name="site" class="sel">
-        <option value="url" selected="selected">Paste Link (Any Site)</option>
-        <option value="youtube">Search: YouTube</option>
-        <option value="x">Search: X (Twitter)</option>
-        <option value="facebook">Search: Facebook</option>
-        <option value="pornhub">Search: Pornhub</option>
-        <option value="xnxx">Search: XNXX</option>
-        <option value="beeg">Search: Beeg</option>
-      </select>
+  <h1>RETRO DOWNLOADER</h1>
 
-      <label for="video-url" id="input-lbl" class="lbl">Paste Video Link:</label>
-      <input type="text" id="video-url" name="url" class="inp" value="" />
+  <!-- UPDATED: Points to your Render backend -->
+  <form id="dl-form" action="https://retro-downloader-api.onrender.com/download" method="get" accept-charset="utf-8">
 
-      <label for="quality" class="lbl">Format / Quality:</label>
-      <select id="quality" name="quality" class="sel">
-        <option value="144p">144p (3GP / Ultra Lite)</option>
-        <option value="240p" selected="selected">240p (MP4 Standard)</option>
-        <option value="360p">360p (MP4 High)</option>
-        <option value="audio">Audio Only (MP3/M4A)</option>
-      </select>
+    <label for="url">Video link</label>
+    <input type="text" id="url" name="url" value="" maxlength="1000" autocomplete="off">
 
-      <div class="btn-row">
-        <input type="submit" id="submit-btn" class="btn" value="Get Link" />
-        <input type="button" id="clear-btn" class="btn btn-sec" value="Clear" />
-      </div>
-    </form>
+    <label for="quality">Quality</label>
+    <select id="quality" name="quality">
+      <option value="144p">144p</option>
+      <option value="240p" selected="selected">240p</option>
+      <option value="360p">360p</option>
+    </select>
 
-    <div id="status-box" class="box hidden">
-      <div id="status-text">Ready.</div>
-    </div>
+    <input type="submit" id="go" value="Get download link">
 
-    <div id="search-box" class="box hidden">
-      <div class="res-title">Tap a video to get link:</div>
-      <div id="search-list"></div>
-    </div>
+  </form>
 
-    <div id="result-box" class="box result-box hidden">
-      <div id="video-title" class="res-title"></div>
-      <div id="video-meta" class="res-meta"></div>
-      <a id="download-link" href="#" class="dl-btn">Download File</a>
-    </div>
-  </div>
+  <div id="status" class="status">Ready.</div>
+  <div id="result"></div>
 
-  <div class="footer">
-    Opera Mini 4.4 Ready • <a href="#config" id="toggle-cfg">API Settings</a>
-    <div id="cfg-panel" class="cfg-panel hidden">
-      <label for="api-base" class="lbl">Backend Base URL:</label>
-      <input type="text" id="api-base" class="inp" value="" />
-      <input type="button" id="save-cfg" class="btn btn-sec" value="Save Endpoint" />
-    </div>
-  </div>
+  <p class="foot">Static page &middot; powered by Render API.</p>
 
-  <script type="text/javascript" src="app.js"></script>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
