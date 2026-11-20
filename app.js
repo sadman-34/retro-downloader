@@ -1,253 +1,191 @@
-/* Strictly ES5 for Opera Mini 4.4 Presto Proxy Compatibility */
+/* ============================================================
+   Retro Downloader - app.js
+   Strictly ES5. No fetch, no promises, no arrow functions,
+   no let/const, no template strings.
+   ============================================================ */
+
+var RETRO_CONFIG = {
+  apiBase: "",        /* Reads from index.html form action */
+  timeoutMs: 60000,   /* 60 seconds to allow Render free tier to wake up */
+  useJson: true       
+};
+
 (function () {
-  var DEFAULT_API_HOST = 'https://retro-downloader-api.onrender.com';
-  var apiHost = DEFAULT_API_HOST;
+  "use strict";
 
-  var form = document.getElementById('dl-form');
-  var siteSelect = document.getElementById('site-select');
-  var inputLbl = document.getElementById('input-lbl');
-  var urlInput = document.getElementById('video-url');
-  var qualitySelect = document.getElementById('quality');
-  var submitBtn = document.getElementById('submit-btn');
-  var clearBtn = document.getElementById('clear-btn');
-  var statusBox = document.getElementById('status-box');
-  var statusText = document.getElementById('status-text');
-  var searchBox = document.getElementById('search-box');
-  var searchList = document.getElementById('search-list');
-  var resultBox = document.getElementById('result-box');
-  var videoTitle = document.getElementById('video-title');
-  var videoMeta = document.getElementById('video-meta');
-  var downloadLink = document.getElementById('download-link');
+  var form = document.getElementById("dl-form");
+  if (!form) { return; }
 
-  var toggleCfg = document.getElementById('toggle-cfg');
-  var cfgPanel = document.getElementById('cfg-panel');
-  var apiBaseInput = document.getElementById('api-base');
-  var saveCfgBtn = document.getElementById('save-cfg');
+  var statusEl = document.getElementById("status");
+  var resultEl = document.getElementById("result");
+  var inputEl  = document.getElementById("url");
+  var selectEl = document.getElementById("quality");
 
-  function getCookie(name) {
-    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : null;
+  var apiBase = RETRO_CONFIG.apiBase || form.getAttribute("action") || "/download";
+  try { form.setAttribute("action", apiBase); } catch (e0) {}
+
+  var busy = false;
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
-  function setCookie(name, val) {
-    document.cookie = name + '=' + encodeURIComponent(val) + '; path=/; max-age=31536000';
+  function trim(s) {
+    return String(s).replace(/^\s+|\s+$/g, "");
   }
 
-  function normalizeHost(raw) {
-    return raw.replace(/\/api\/(extract|search)\/?$/, '').replace(/\/+$/, '');
+  function setStatus(text, cls) {
+    if (!statusEl) { return; }
+    statusEl.innerHTML = esc(text);
+    statusEl.className = "status" + (cls ? " " + cls : "");
   }
 
-  function isDirectUrl(val) {
-    return /^https?:\/\//i.test(val);
+  function setResult(html) {
+    if (resultEl) { resultEl.innerHTML = html; }
   }
 
-  var savedEndpoint = getCookie('liteget_api');
-  if (savedEndpoint) {
-    apiHost = normalizeHost(savedEndpoint);
+  function hasXhr() {
+    return typeof XMLHttpRequest !== "undefined";
   }
-  apiBaseInput.value = apiHost;
 
-  function updateModeUI() {
-    if (siteSelect.value === 'url') {
-      inputLbl.innerHTML = 'Paste Video Link:';
-      submitBtn.value = 'Get Link';
-      form.action = apiHost + '/api/extract';
-    } else {
-      inputLbl.innerHTML = 'Keywords or Paste Link:';
-      submitBtn.value = 'Search';
-      form.action = apiHost + '/api/search';
+  function buildUrl(base, target, quality) {
+    var sep = base.indexOf("?") === -1 ? "?" : "&";
+    var out = base + sep + "url=" + encodeURIComponent(target) + "&quality=" + encodeURIComponent(quality);
+    if (RETRO_CONFIG.useJson) { out += "&format=json"; }
+    return out;
+  }
+
+  function parseJson(text) {
+    if (!text) { return null; }
+    if (typeof JSON !== "undefined" && JSON.parse) {
+      try { return JSON.parse(text); } catch (e1) { return null; }
     }
+    try { return eval("(" + text + ")"); } catch (e2) { return null; }
   }
 
-  siteSelect.onchange = updateModeUI;
-  updateModeUI();
-
-  function showStatus(msg, isError) {
-    statusBox.className = isError ? 'box err-box' : 'box';
-    statusText.innerHTML = msg;
+  function showLink(link, title, size, quality) {
+    setStatus("Done. Tap the button below to download.", "ok");
+    var html = "";
+    if (title) { html += '<p class="file">' + esc(title) + "</p>"; }
+    html += '<p><a class="btn" href="' + esc(link) + '">Download ' + esc(quality || "file") + "</a></p>";
+    if (size) { html += '<p class="meta">Size: ' + esc(size) + "</p>"; }
+    html += '<p class="meta">If the download stalls, open the link again.</p>';
+    setResult(html);
   }
 
-  function hideStatus() {
-    statusBox.className = 'box hidden';
+  function showFailure(requestUrl, message) {
+    setStatus(message, "err");
+    setResult('<p class="hint">If this keeps happening, <a href="' + esc(requestUrl) + '">open the request directly</a>.</p>');
   }
 
-  function hideAllResults() {
-    searchBox.className = 'box hidden';
-    resultBox.className = 'box result-box hidden';
-  }
+  function handleResponse(text, requestUrl, quality) {
+    busy = false;
+    var data = parseJson(text);
 
-  function parseJsonSafe(str) {
-    if (window.JSON && typeof window.JSON.parse === 'function') {
-      return window.JSON.parse(str);
-    }
-    return eval('(' + str + ')');
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&')
-      .replace(/</g, '<')
-      .replace(/>/g, '>')
-      .replace(/"/g, '"');
-  }
-
-  function requestVideoLink(targetUrl, quality) {
-    if (!window.XMLHttpRequest) {
-      form.submit();
+    if (!data) {
+      var bare = trim(text);
+      if (bare.substring(0, 4) === "http") {
+        showLink(bare, "", "", quality);
+        return;
+      }
+      showFailure(requestUrl, "Server sent an unreadable answer.");
       return;
     }
-    var xhr = new XMLHttpRequest();
-    var requestUrl = apiHost + '/api/extract?url=' + encodeURIComponent(targetUrl) +
-      '&quality=' + encodeURIComponent(quality);
 
-    submitBtn.disabled = true;
-    resultBox.className = 'box result-box hidden';
-    showStatus('Fetching ' + quality + ' link... Please wait.', false);
+    if (data.ok === false || data.error) {
+      showFailure(requestUrl, data.error || "Server refused this link.");
+      return;
+    }
 
-    xhr.open('GET', requestUrl, true);
+    var link = data.download_url || data.downloadUrl || data.url || data.link || "";
+    if (!link) {
+      showFailure(requestUrl, "No download link found.");
+      return;
+    }
+
+    showLink(link, data.title || "", data.size || "", data.quality || quality);
+  }
+
+  function extractError(text) {
+    var d = parseJson(text);
+    return (d && d.error) ? d.error : "";
+  }
+
+  function send(requestUrl, quality) {
+    var xhr;
+    try {
+      xhr = new XMLHttpRequest();
+    } catch (e1) {
+      busy = false;
+      showFailure(requestUrl, "Browser cannot send background requests.");
+      return;
+    }
+
+    var done = false;
+
+    var timer = setTimeout(function () {
+      if (done) { return; }
+      done = true;
+      try { xhr.abort(); } catch (e2) {}
+      busy = false;
+      showFailure(requestUrl, "Server took too long to answer.");
+    }, RETRO_CONFIG.timeoutMs);
+
     xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        submitBtn.disabled = false;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            var data = parseJsonSafe(xhr.responseText);
-            if (data && data.download_url) {
-              hideStatus();
-              videoTitle.innerHTML = escapeHtml(data.title || 'Ready to Download');
-              videoMeta.innerHTML = 'Quality: ' + escapeHtml(data.quality || quality) +
-                (data.size ? ' | Size: ' + escapeHtml(data.size) : '');
-              downloadLink.href = data.download_url;
-              resultBox.className = 'box result-box';
-            } else {
-              showStatus(data && data.error ? escapeHtml(data.error) : 'No download URL returned.', true);
-            }
-          } catch (e) {
-            showStatus('Invalid response from backend.', true);
-          }
-        } else {
-          showStatus('Server Error (HTTP ' + xhr.status + ').', true);
-        }
+      if (done) { return; }
+      if (xhr.readyState !== 4) { return; }
+      done = true;
+      clearTimeout(timer);
+
+      var text = "";
+      try { text = xhr.responseText || ""; } catch (e3) {}
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        handleResponse(text, requestUrl, quality);
+      } else if (xhr.status === 0) {
+        busy = false;
+        showFailure(requestUrl, "No connection to server (offline/blocked).");
+      } else {
+        busy = false;
+        showFailure(requestUrl, extractError(text) || ("Server error " + xhr.status + "."));
       }
     };
-    xhr.onerror = function () {
-      submitBtn.disabled = false;
-      showStatus('Network error reaching backend.', true);
-    };
-    xhr.send(null);
-  }
 
-  function renderSearchResults(results) {
-    if (!results || !results.length) {
-      showStatus('No videos found for that search.', true);
-      return;
-    }
-    hideStatus();
-    var html = '';
-    for (var i = 0; i < results.length; i++) {
-      var item = results[i];
-      var dur = item.duration ? ' <span class="sr-dur">[' + escapeHtml(item.duration) + ']</span>' : '';
-      html += '<a href="#pick" class="sr-item" data-url="' + escapeHtml(item.url) + '">' +
-        (i + 1) + '. ' + escapeHtml(item.title) + dur + '</a>';
-    }
-    searchList.innerHTML = html;
-    searchBox.className = 'box';
-
-    var links = searchList.getElementsByTagName('a');
-    for (var j = 0; j < links.length; j++) {
-      links[j].onclick = function (e) {
-        if (e && e.preventDefault) {
-          e.preventDefault();
-        }
-        var pickedUrl = this.getAttribute('data-url');
-        if (pickedUrl) {
-          requestVideoLink(pickedUrl, qualitySelect.value);
-        }
-        return false;
-      };
+    try {
+      xhr.open("GET", requestUrl, true);
+      xhr.send(null);
+    } catch (e4) {
+      done = true;
+      clearTimeout(timer);
+      busy = false;
+      showFailure(requestUrl, "Could not start request.");
     }
   }
 
-  function requestSearch(site, keyword) {
-    if (!window.XMLHttpRequest) {
-      form.submit();
-      return;
-    }
-    var xhr = new XMLHttpRequest();
-    var requestUrl = apiHost + '/api/search?site=' + encodeURIComponent(site) +
-      '&q=' + encodeURIComponent(keyword);
+  form.onsubmit = function () {
+    var target  = trim(inputEl ? inputEl.value : "");
+    var quality = selectEl ? selectEl.value : "240p";
 
-    submitBtn.disabled = true;
-    hideAllResults();
-    showStatus('Searching ' + site + '... Please wait.', false);
-
-    xhr.open('GET', requestUrl, true);
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        submitBtn.disabled = false;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            var data = parseJsonSafe(xhr.responseText);
-            if (data && data.results) {
-              renderSearchResults(data.results);
-            } else {
-              showStatus(data && data.error ? escapeHtml(data.error) : 'Search failed.', true);
-            }
-          } catch (e) {
-            showStatus('Invalid search response from backend.', true);
-          }
-        } else {
-          showStatus('Search Error (HTTP ' + xhr.status + ').', true);
-        }
-      }
-    };
-    xhr.onerror = function () {
-      submitBtn.disabled = false;
-      showStatus('Network error reaching backend.', true);
-    };
-    xhr.send(null);
-  }
-
-  form.onsubmit = function (e) {
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
-    var val = urlInput.value.replace(/^\s+|\s+$/g, '');
-    if (!val) {
-      showStatus('Please paste a link or enter keywords.', true);
+    if (!target) {
+      setStatus("Paste a video link first.", "err");
+      setResult("");
       return false;
     }
-    if (siteSelect.value === 'url' || isDirectUrl(val)) {
-      hideAllResults();
-      requestVideoLink(val, qualitySelect.value);
-    } else {
-      requestSearch(siteSelect.value, val);
+
+    if (busy) { return false; }
+
+    var requestUrl = buildUrl(apiBase, target, quality);
+
+    if (!hasXhr()) {
+      setStatus("Sending request the simple way...", "busy");
+      return true; 
     }
+
+    busy = true;
+    setStatus("Waking up server. Please wait up to 60s...", "busy");
+    setResult("");
+    send(requestUrl, quality);
     return false;
   };
 
-  clearBtn.onclick = function () {
-    urlInput.value = '';
-    hideStatus();
-    hideAllResults();
-    urlInput.focus();
-  };
-
-  toggleCfg.onclick = function (e) {
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
-    cfgPanel.className = cfgPanel.className.indexOf('hidden') !== -1 ? 'cfg-panel' : 'cfg-panel hidden';
-    return false;
-  };
-
-  saveCfgBtn.onclick = function () {
-    var newUrl = apiBaseInput.value.replace(/^\s+|\s+$/g, '');
-    if (newUrl) {
-      apiHost = normalizeHost(newUrl);
-      apiBaseInput.value = apiHost;
-      setCookie('liteget_api', apiHost);
-      updateModeUI();
-      showStatus('Backend host saved.', false);
-    }
-  };
 })();
