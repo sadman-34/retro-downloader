@@ -5,8 +5,8 @@
    ============================================================ */
 
 var RETRO_CONFIG = {
-  apiBase: "",        /* Reads from index.html form action */
-  timeoutMs: 60000,   /* 60 seconds to allow Render free tier to wake up */
+  apiBase: "",        
+  timeoutMs: 120000,   /* 2 minutes to give Render time to download and merge */
   useJson: true       
 };
 
@@ -182,7 +182,7 @@ var RETRO_CONFIG = {
     }
 
     busy = true;
-    setStatus("Waking up server. Please wait up to 60s...", "busy");
+        setStatus("Processing video. Please wait up to 2 mins...", "busy");
     setResult("");
     send(requestUrl, quality);
     return false;
